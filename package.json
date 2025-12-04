@@ -1,0 +1,26 @@
+{
+  "name": "caddy-router",
+  "version": "1.0.0",
+  "description": "Dynamic Caddy reverse proxy with database-driven routing rules",
+  "main": "api.js",
+  "scripts": {
+    "start": "node api.js",
+    "resolver": "node resolver.js",
+    "cron": "node cron.js",
+    "dev": "node api.js",
+    "examples": "node examples.js",
+    "test": "node test.js",
+    "start:all": "./start-all.sh",
+    "stop:all": "./stop-all.sh"
+  },
+  "keywords": ["caddy", "reverse-proxy", "routing", "fastify", "sqlite"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.5.0",
+    "dotenv": "^17.2.3",
+    "fastify": "^5.6.2",
+    "node-cron": "^4.2.1"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+.env.local
+.env.production
+logs/
+*.log
+.DS_Store
+*.pid
+.api.pid
+.resolver.pid
+.cron.pid

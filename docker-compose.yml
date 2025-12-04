@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Caddy reverse proxy
+  caddy:
+    image: caddy:latest
+    container_name: caddy-router
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    depends_on:
+      - routing-api
+    restart: unless-stopped
+    networks:
+      - caddy-network
+
+  # Routing API
+  routing-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: routing-api
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=3000
+      - DB_PATH=/data/routing.db
+      - CRON_SCHEDULE=0 * * * *
+    volumes:
+      - routing_data:/data
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - caddy-network
+    command: node api.js
+
+  # Cron service for pruning expired rules
+  routing-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: routing-cron
+    environment:
+      - DB_PATH=/data/routing.db
+      - CRON_SCHEDULE=0 * * * *
+    volumes:
+      - routing_data:/data
+    restart: unless-stopped
+    networks:
+      - caddy-network
+    command: node cron.js
+
+volumes:
+  caddy_data:
+  caddy_config:
+  caddy_logs:
+  routing_data:
+
+networks:
+  caddy-network:
+    driver: bridge

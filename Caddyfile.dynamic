@@ -1,0 +1,57 @@
+{
+    # Global options
+    admin 0.0.0.0:2019
+    auto_https off
+}
+
+# Management API - accessible directly
+:3000 {
+    reverse_proxy localhost:3000
+}
+
+# Main dynamic routing handler
+:80 {
+    # Log all requests
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 10
+        }
+        format json
+    }
+
+    # Try to route based on database rules
+    handle {
+        # Extract request details and query the routing API
+        @hasRoute {
+            expression `
+                {http.request.host} != "" && 
+                {http.request.method} == "GET"
+            `
+        }
+
+        # Route all traffic through a handler that queries the database
+        handle @hasRoute {
+            # Call the routing API to find matching rule
+            reverse_proxy localhost:3000 {
+                # Rewrite path to match API endpoint
+                rewrite /api/match?domain={host}&path={path}&{query}
+                
+                # Only proxy if we get a 200 response
+                @success status 200
+                handle_response @success {
+                    # Extract downstream URL from response and proxy to it
+                    # This requires custom handling or forward_auth
+                }
+            }
+        }
+
+        # Fallback for non-matched routes
+        respond "No matching route found" 404
+    }
+
+    # Error handling
+    handle_errors {
+        respond "{err.status_code} {err.status_text}"
+    }
+}

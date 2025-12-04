@@ -1,0 +1,60 @@
+{
+    # Global options
+    admin 0.0.0.0:2019
+    auto_https off
+    debug
+}
+
+# Management API (port 3000)
+:3000 {
+    reverse_proxy localhost:3000
+}
+
+# Resolver service (port 3001) - for Caddy internal use
+localhost:3001 {
+    reverse_proxy localhost:3001
+}
+
+# Main routing handler (port 80)
+:80 {
+    # Log all requests
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 10
+        }
+        format json
+    }
+
+    # Route all traffic through the resolver
+    handle {
+        # Call resolver to get downstream URL
+        reverse_proxy http://localhost:3001/resolve?host={host}&path={path} {
+            # If resolver returns 200, extract downstream URL
+            @success status 200
+            
+            # Pass through headers
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+            
+            # On success response, handle specially
+            handle_response @success {
+                # Copy the actual content, not the resolver response
+                copy_response
+            }
+        }
+    }
+
+    # Error handling
+    handle_errors {
+        @404 expression {err.status_code} == 404
+        handle @404 {
+            respond "No routing rule found for {host}{path}" 404
+        }
+        
+        respond "{err.status_code} {err.status_text}" {err.status_code}
+    }
+}

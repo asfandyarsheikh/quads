@@ -1,0 +1,39 @@
+{
+    # Global options
+    admin 0.0.0.0:2019
+    auto_https off
+}
+
+# Catch-all reverse proxy handler
+:80 {
+    # Handle all requests
+    @all {
+        path *
+    }
+
+    # Forward request to routing API for matching
+    reverse_proxy @all {
+        # Query the API to get the downstream URL
+        to localhost:3000
+        
+        # Rewrite to match endpoint
+        rewrite /api/match?domain={host}&subdomain={labels.3}&path={path}&{query}
+        
+        # Handle response
+        header_up Host {upstream_hostport}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Log all requests
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# Management API endpoint (optional - for direct access to API)
+:3000 {
+    reverse_proxy localhost:3000
+}
